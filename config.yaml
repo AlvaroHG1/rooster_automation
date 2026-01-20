@@ -1,0 +1,21 @@
+roi_online:
+  url: "https://personeel.roi-online.nl/default.aspx?PageID=eafda058-2cef-46ea-a88d-989e0037b6ee&ContextID=a86d709c-55d2-4845-b321-c6639d4a9b01&ObjectID=25fd5cad-c8b2-4860-a9f1-a3889955dcea"
+  month_radio_button_id: "ls_ch_i9gdcl_2"
+  calendar_export_button_id: "ls_ch_ic0g"
+  username_field_id: "ctl00_MLC_tbUserName"
+  password_field_id: "ctl00_MLC_tbPassword"
+  login_button_id: "ctl00_MLC_btnLogin"
+
+gmail:
+  check_interval_minutes: 10
+  max_emails_to_check: 10
+
+schedule:
+  active_day: "wednesday"
+  start_hour: 12
+  end_hour: 17
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "rooster_automation.log"

@@ -1,0 +1,4 @@
+# Docker-specific ignores
+shared/
+logs/
+temp_downloads/

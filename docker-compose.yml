@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  rooster-automation:
+    build: .
+    container_name: rooster-automation
+    restart: always
+
+    volumes:
+      # Environment variables (read-only)
+      - ./.env:/app/.env:ro
+
+      # Shared folder for .ics files
+      # Change './shared' to your desired path on the host
+      - ./shared:/app/shared
+
+      # Logs directory
+      - ./logs:/app/logs
+
+    environment:
+      # Set timezone to Amsterdam
+      - TZ=Europe/Amsterdam
+
+      # Override shared folder path for container
+      - SHARED_FOLDER_PATH=/app/shared
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
