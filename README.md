@@ -9,8 +9,9 @@ Deze automatisering:
 1. Monitort Gmail inbox (ahgautomations2@gmail.com) voor emails van `noreply@staff.nl`
 2. Draait alleen op **woensdag tussen 12:00-17:00**
 3. Download het maandrooster van ROI Online als .ics bestand
-4. Slaat het op in een gedeelde map (iCloud Drive/OneDrive/Dropbox)
-5. iPhone Shortcuts detecteert het bestand en importeert het automatisch in Apple Calendar
+4. Slaat het op via één van de volgende methoden:
+   - **File Storage**: Gedeelde map (iCloud Drive/OneDrive/Dropbox) + iPhone Shortcuts
+   - **CalDAV**: Direct naar iCloud Calendar (automatische sync, geen Shortcuts nodig)
 
 ## Installatie (Lokaal - zonder Docker)
 
@@ -73,6 +74,51 @@ Kies een gedeelde map die toegankelijk is vanaf je iPhone:
 - iCloud Drive: `/Users/JouwNaam/Library/Mobile Documents/com~apple~CloudDocs/Rooster`
 
 Maak de map aan als deze nog niet bestaat.
+
+### 5. CalDAV Setup (Optioneel - Alternatief voor File Storage)
+
+In plaats van bestanden opslaan in een gedeelde map, kun je events direct uploaden naar iCloud Calendar via CalDAV.
+
+**Voordelen:**
+
+- ✅ Automatische sync naar alle Apple devices
+- ✅ Geen iPhone Shortcuts nodig
+- ✅ Events direct in je kalender
+
+**Setup:**
+
+1. **Genereer een App-Specific Password voor iCloud:**
+   - Ga naar [appleid.apple.com](https://appleid.apple.com/account/manage)
+   - Klik op "Sign-In and Security" → "App-Specific Passwords"
+   - Klik op "Generate an app-specific password"
+   - Geef het een naam (bijv. "Rooster Automation")
+   - Kopieer het gegenereerde wachtwoord
+
+2. **Update `.env` bestand:**
+
+   ```env
+   # Kies storage methode
+   STORAGE_METHOD=caldav
+
+   # CalDAV configuratie
+   CALDAV_URL=https://caldav.icloud.com
+   CALDAV_USERNAME=jouw_apple_id@icloud.com
+   CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
+   CALDAV_CALENDAR_NAME=Rooster
+   ```
+
+3. **Maak een "Rooster" kalender aan in iCloud:**
+   - Open Calendar app op je Mac/iPhone
+   - Maak een nieuwe kalender aan met de naam "Rooster"
+   - Zorg dat deze gesynchroniseerd is met iCloud
+
+**Let op:** Als de kalender "Rooster" niet bestaat, worden events geüpload naar je eerste beschikbare kalender.
+
+**Terug naar File Storage:**
+
+```env
+STORAGE_METHOD=file
+```
 
 ## Gebruik
 
