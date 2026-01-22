@@ -11,8 +11,8 @@ gmail:
   max_emails_to_check: 10
 
 schedule:
-  active_day: "wednesday"
-  start_hour: 12
+  active_day: "thursday"
+  start_hour: 11
   end_hour: 17
 
 logging:

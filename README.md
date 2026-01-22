@@ -38,10 +38,10 @@ cp .env.example .env
 Bewerk `.env`:
 
 ```env
-ROI_EMAIL=alvarogroenewegen@gmail.com
+ROI_EMAIL=jouw_email_adres
 ROI_PASSWORD=jouw_wachtwoord
 
-GMAIL_ADDRESS=ahgautomations2@gmail.com
+GMAIL_ADDRESS=jouw_gmail_app_adres
 GMAIL_APP_PASSWORD=jouw_gmail_app_wachtwoord
 
 SHARED_FOLDER_PATH=C:/Users/JouwNaam/OneDrive/Rooster
@@ -50,15 +50,56 @@ SHARED_FOLDER_PATH=C:/Users/JouwNaam/OneDrive/Rooster
 TRIGGER_EMAIL_SENDER=noreply@staff.nl
 ```
 
-### 3. Gmail App Password
+### 3. Gmail API Setup (OAuth 2.0)
 
-Voor Gmail monitoring heb je een **App Password** nodig:
+Voor Gmail monitoring gebruik je de **Gmail API** met OAuth 2.0 authenticatie:
 
-1. Ga naar [Google Account Security](https://myaccount.google.com/security)
-2. Zet 2-Step Verification aan (als nog niet gedaan)
-3. Ga naar "App passwords"
-4. Genereer een nieuw app password voor "Mail"
-5. Kopieer het wachtwoord naar `GMAIL_APP_PASSWORD` in `.env`
+#### Stap 1: Google Cloud Project Aanmaken
+
+1. Ga naar [Google Cloud Console](https://console.cloud.google.com)
+2. Klik op "Select a project" → "New Project"
+3. Geef het project een naam (bijv. "Rooster Automation")
+4. Klik op "Create"
+
+#### Stap 2: Gmail API Inschakelen
+
+1. Selecteer je nieuwe project
+2. Ga naar "APIs & Services" → "Library"
+3. Zoek naar "Gmail API"
+4. Klik op "Enable"
+
+#### Stap 3: OAuth 2.0 Credentials Aanmaken
+
+1. Ga naar "APIs & Services" → "Credentials"
+2. Klik op "Configure Consent Screen"
+   - Kies "External" (tenzij je een Google Workspace account hebt)
+   - Vul app naam in: "Rooster Automation"
+   - Vul je email adres in bij "User support email" en "Developer contact"
+   - Klik op "Save and Continue"
+   - Skip "Scopes" (klik "Save and Continue")
+   - Bij "Test users": voeg `ahgautomations2@gmail.com` toe
+   - Klik op "Save and Continue"
+3. Ga terug naar "Credentials"
+4. Klik op "+ CREATE CREDENTIALS" → "OAuth client ID"
+5. Application type: **Desktop app**
+6. Name: "Rooster Automation Desktop"
+7. Klik op "Create"
+8. **Download** het credentials bestand
+9. Hernoem het naar `credentials.json`
+10. Plaats het in de project folder: `c:\Users\Alvaro\vscode\rooster_automation\`
+
+#### Stap 4: Eerste Authenticatie
+
+Bij de eerste keer dat je de applicatie start:
+
+1. Een browser venster opent automatisch
+2. Login met `ahgautomations2@gmail.com`
+3. Klik op "Advanced" → "Go to Rooster Automation (unsafe)"
+4. Klik op "Allow" om toegang te geven
+5. Een `token.json` bestand wordt automatisch aangemaakt
+6. Vanaf nu werkt het automatisch (geen re-authenticatie nodig)
+
+**Let op:** De `token.json` vernieuwt zichzelf automatisch. Je hoeft nooit opnieuw te authenticeren, tenzij je de token handmatig verwijdert.
 
 ### 4. Gedeelde Map
 

@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# OAuth 2.0 credentials (Gmail API)
+credentials.json
+token.json
+
 # Python
 __pycache__/
 *.py[cod]
