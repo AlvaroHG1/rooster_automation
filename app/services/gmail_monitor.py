@@ -10,8 +10,8 @@ import time
 from email.header import decode_header
 from typing import Optional, Callable, Dict, Any
 
-from settings import settings
-from utils import retry_on_failure
+from app.core.settings import settings
+from app.core.utils import retry_on_failure
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class GmailMonitor:
         logger.debug("✓ Successfully connected to Gmail")
         return mail
     
-    def check_for_trigger_email(self) -> bool:
+    def check_for_trigger_email(self) -> Dict[str, Any]:
         """Check if there's a new email from the trigger sender."""
         mail = None
         try:
@@ -65,11 +65,9 @@ class GmailMonitor:
                 return False
             
             if latest_uid > self.last_checked_uid:
-                self._log_email_details(mail, latest_uid)
-                self.last_checked_uid = latest_uid
-                return True
+                return self._process_found_email(mail, latest_uid)
             
-            return False
+            return {"found": False}
             
         except Exception as e:
             logger.error(f"Error checking emails: {e}")
@@ -81,17 +79,47 @@ class GmailMonitor:
                 except:
                     pass
 
-    def _log_email_details(self, mail, uid):
-        """Log details of the found email."""
+    def _process_found_email(self, mail, uid) -> Dict[str, Any]:
+        """Process a found email and extract week information."""
         try:
             status, msg_data = mail.fetch(uid, "(RFC822)")
-            if status == "OK":
-                email_body = msg_data[0][1]
-                msg = email.message_from_bytes(email_body)
-                subject = self._decode_header(msg["Subject"])
-                logger.info(f"New trigger email! Subject: {subject}")
+            if status != "OK":
+                return {"found": False}
+
+            email_body = msg_data[0][1]
+            msg = email.message_from_bytes(email_body)
+            subject = self._decode_header(msg["Subject"])
+            
+            logger.info(f"New trigger email! Subject: {subject}")
+            
+            # Extract body text
+            body_text = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        body_text += part.get_payload(decode=True).decode()
+            else:
+                body_text = msg.get_payload(decode=True).decode()
+            
+            # Extract week number
+            import re
+            week_match = re.search(r'week\s+(\d+)', body_text, re.IGNORECASE)
+            target_week = int(week_match.group(1)) if week_match else None
+            
+            if target_week:
+                logger.info(f"Extracted target week: {target_week}")
+            else:
+                logger.warning("Could not extract week number from email body")
+
+            self.last_checked_uid = uid
+            return {
+                "found": True,
+                "week": target_week,
+                "uid": uid
+            }
         except Exception as e:
-            logger.warning(f"Could not fetch email details: {e}")
+            logger.error(f"Error processing email: {e}")
+            return {"found": False}
 
     def _decode_header(self, header: str) -> str:
         """Decode email header."""

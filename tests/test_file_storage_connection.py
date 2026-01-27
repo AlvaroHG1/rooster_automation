@@ -8,7 +8,7 @@ import sys
 import time
 
 # Import the module
-from file_storage import CalDAVStorage
+from app.services.calendar_service import CalendarService
 
 def test_lazy_initialization():
     """Test that CalDAVStorage initializes without making a connection."""
@@ -17,7 +17,7 @@ def test_lazy_initialization():
     print("=" * 60)
     
     start = time.time()
-    storage = CalDAVStorage()
+    storage = CalendarService()
     duration = time.time() - start
     
     print(f"✓ Initialization completed in {duration:.3f} seconds")
@@ -35,7 +35,7 @@ def test_auto_connect():
     print("Test 2: Auto-Connect on First Use")
     print("=" * 60)
     
-    storage = CalDAVStorage()
+    storage = CalendarService()
     print("Storage initialized (no connection yet)")
     
     # This should trigger auto-connect
@@ -54,7 +54,7 @@ def test_connection_test_method():
     print("Test 3: Connection Test Method")
     print("=" * 60)
     
-    storage = CalDAVStorage()
+    storage = CalendarService()
     result = storage.test_connection()
     
     if result:
@@ -76,7 +76,7 @@ def test_event_upload():
         print(f"⚠ SKIP: Test file not found: {ics_file}")
         return None
     
-    storage = CalDAVStorage()
+    storage = CalendarService()
     
     try:
         result = storage.save_ics_file(ics_file)

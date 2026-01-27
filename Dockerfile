@@ -45,8 +45,10 @@ RUN playwright install chromium && \
     playwright install-deps chromium
 
 # Copy application code
-COPY --chown=automation:automation *.py .
-COPY --chown=automation:automation config.yaml .
+# Copy application code
+COPY --chown=automation:automation app/ app/
+COPY --chown=automation:automation config/ config/
+COPY --chown=automation:automation main.py .
 
 # Switch to non-root user
 USER automation

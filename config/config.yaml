@@ -5,15 +5,18 @@ roi_online:
   username_field_id: "ctl00_MLC_tbUserName"
   password_field_id: "ctl00_MLC_tbPassword"
   login_button_id: "ctl00_MLC_btnLogin"
+  week_display_id: "ls_ch_i45lDL"
+  prev_week_button_id: "ls_ch_i45lP"
+  next_week_button_id: "ls_ch_i45lN"
 
 gmail:
-  check_interval_minutes: 10
+  check_interval_minutes: 3
   max_emails_to_check: 10
 
 schedule:
   active_day: "thursday"
   start_hour: 11
-  end_hour: 17
+  end_hour: 24
 
 logging:
   level: "INFO"

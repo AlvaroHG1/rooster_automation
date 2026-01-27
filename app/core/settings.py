@@ -26,7 +26,11 @@ class Settings:
     
     def _load_config(self):
         """Load configuration from yaml file."""
-        config_path = os.getenv('CONFIG_PATH', 'config.yaml')
+        # Config is now in ../../config/config.yaml relative to this file
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        default_config_path = os.path.join(base_dir, 'config', 'config.yaml')
+        
+        config_path = os.getenv('CONFIG_PATH', default_config_path)
         try:
             with open(config_path, 'r') as f:
                 self._config = yaml.safe_load(f)
@@ -58,6 +62,18 @@ class Settings:
     @property
     def roi_calendar_export_button(self) -> str:
         return self._config['roi_online']['calendar_export_button_id']
+
+    @property
+    def roi_week_display(self) -> str:
+        return self._config['roi_online']['week_display_id']
+
+    @property
+    def roi_prev_week_button(self) -> str:
+        return self._config['roi_online']['prev_week_button_id']
+
+    @property
+    def roi_next_week_button(self) -> str:
+        return self._config['roi_online']['next_week_button_id']
 
     @property
     def roi_email(self) -> str:

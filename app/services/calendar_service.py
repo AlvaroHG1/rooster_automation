@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from icalendar import Calendar
 from typing import List, Optional
 
-from settings import settings
-from utils import retry_on_failure
+from app.core.settings import settings
+from app.core.utils import retry_on_failure
 
 logger = logging.getLogger(__name__)
 
