@@ -10,13 +10,13 @@ roi_online:
   next_week_button_id: "ls_ch_i45lN"
 
 gmail:
-  check_interval_minutes: 3
+  check_interval_minutes: 10
   max_emails_to_check: 10
 
 schedule:
-  active_day: "thursday"
-  start_hour: 11
-  end_hour: 24
+  active_day: "wednesday"
+  start_hour: 10
+  end_hour: 18
 
 logging:
   level: "INFO"
