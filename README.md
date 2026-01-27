@@ -6,12 +6,18 @@ Automatische download van maandrooster van ROI Online naar Apple Calendar via iP
 
 Deze automatisering:
 
-1. Monitort Gmail inbox (ahgautomations2@gmail.com) voor emails van `noreply@staff.nl`
-2. Draait alleen op **woensdag tussen 12:00-17:00**
-3. Download het maandrooster van ROI Online als .ics bestand
-4. Slaat het op via één van de volgende methoden:
-   - **File Storage**: Gedeelde map (iCloud Drive/OneDrive/Dropbox) + iPhone Shortcuts
-   - **CalDAV**: Direct naar iCloud Calendar (automatische sync, geen Shortcuts nodig)
+1. Monitort Gmail inbox voor emails van `noreply@staff.nl`
+2. Draait alleen op **donderdag tussen 11:00-24:00** (configureerbaar in `config.yaml`)
+3. Download het rooster van ROI Online als .ics bestand
+4. Upload events automatisch naar iCloud Calendar via CalDAV
+5. Sync automatisch naar alle Apple devices
+
+**Voordelen:**
+
+- ✅ Automatische sync naar alle Apple devices
+- ✅ Geen handmatige stappen vereist
+- ✅ Events direct in je kalender
+- ✅ Week-specifieke roosters worden ondersteund
 
 ## Installatie (Lokaal - zonder Docker)
 
@@ -38,21 +44,53 @@ cp .env.example .env
 Bewerk `.env`:
 
 ```env
+# ROI Online Credentials
 ROI_EMAIL=jouw_email_adres
 ROI_PASSWORD=jouw_wachtwoord
 
+# Gmail Settings
 GMAIL_ADDRESS=jouw_gmail_app_adres
 GMAIL_APP_PASSWORD=jouw_gmail_app_wachtwoord
 
-SHARED_FOLDER_PATH=C:/Users/JouwNaam/OneDrive/Rooster
-# Of voor Mac: /Users/JouwNaam/Library/Mobile Documents/com~apple~CloudDocs/Rooster
-
+# Trigger Email
 TRIGGER_EMAIL_SENDER=noreply@staff.nl
+
+# CalDAV Configuratie (iCloud Calendar)
+CALDAV_URL=https://caldav.icloud.com
+CALDAV_USERNAME=jouw_apple_id@icloud.com
+CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
+CALDAV_CALENDAR_NAME=Rooster
 ```
 
-### 3. Gmail API Setup (OAuth 2.0)
+### 3. CalDAV Setup (iCloud Calendar)
 
-Voor Gmail monitoring gebruik je de **Gmail API** met OAuth 2.0 authenticatie:
+Deze applicatie gebruikt CalDAV om events direct naar je iCloud Calendar te uploaden.
+
+**Setup:**
+
+1. **Genereer een App-Specific Password voor iCloud:**
+   - Ga naar [appleid.apple.com](https://appleid.apple.com/account/manage)
+   - Klik op "Sign-In and Security" → "App-Specific Passwords"
+   - Klik op "Generate an app-specific password"
+   - Geef het een naam (bijv. "Rooster Automation")
+   - Kopieer het gegenereerde wachtwoord
+
+2. **Maak een "Rooster" kalender aan in iCloud:**
+   - Open Calendar app op je Mac/iPhone
+   - Maak een nieuwe kalender aan met de naam "Rooster"
+   - Zorg dat deze gesynchroniseerd is met iCloud
+
+3. **De CalDAV credentials zijn al in je `.env` bestand gezet** (zie stap 2)
+
+**Let op:** Als de kalender "Rooster" niet bestaat, worden events geüpload naar je eerste beschikbare kalender.
+
+### 4. Gmail API Setup (OAuth 2.0)
+
+Voor Gmail monitoring gebruikt de applicatie IMAP met een app-specific password (al ingesteld in `.env`).
+
+**Alternatief: Gmail API (Optioneel)**
+
+Als je de Gmail API wilt gebruiken in plaats van IMAP:
 
 #### Stap 1: Google Cloud Project Aanmaken
 
@@ -101,66 +139,6 @@ Bij de eerste keer dat je de applicatie start:
 
 **Let op:** De `token.json` vernieuwt zichzelf automatisch. Je hoeft nooit opnieuw te authenticeren, tenzij je de token handmatig verwijdert.
 
-### 4. Gedeelde Map
-
-Kies een gedeelde map die toegankelijk is vanaf je iPhone:
-
-**Windows:**
-
-- OneDrive: `C:/Users/JouwNaam/OneDrive/Rooster`
-- Dropbox: `C:/Users/JouwNaam/Dropbox/Rooster`
-
-**Mac:**
-
-- iCloud Drive: `/Users/JouwNaam/Library/Mobile Documents/com~apple~CloudDocs/Rooster`
-
-Maak de map aan als deze nog niet bestaat.
-
-### 5. CalDAV Setup (Optioneel - Alternatief voor File Storage)
-
-In plaats van bestanden opslaan in een gedeelde map, kun je events direct uploaden naar iCloud Calendar via CalDAV.
-
-**Voordelen:**
-
-- ✅ Automatische sync naar alle Apple devices
-- ✅ Geen iPhone Shortcuts nodig
-- ✅ Events direct in je kalender
-
-**Setup:**
-
-1. **Genereer een App-Specific Password voor iCloud:**
-   - Ga naar [appleid.apple.com](https://appleid.apple.com/account/manage)
-   - Klik op "Sign-In and Security" → "App-Specific Passwords"
-   - Klik op "Generate an app-specific password"
-   - Geef het een naam (bijv. "Rooster Automation")
-   - Kopieer het gegenereerde wachtwoord
-
-2. **Update `.env` bestand:**
-
-   ```env
-   # Kies storage methode
-   STORAGE_METHOD=caldav
-
-   # CalDAV configuratie
-   CALDAV_URL=https://caldav.icloud.com
-   CALDAV_USERNAME=jouw_apple_id@icloud.com
-   CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
-   CALDAV_CALENDAR_NAME=Rooster
-   ```
-
-3. **Maak een "Rooster" kalender aan in iCloud:**
-   - Open Calendar app op je Mac/iPhone
-   - Maak een nieuwe kalender aan met de naam "Rooster"
-   - Zorg dat deze gesynchroniseerd is met iCloud
-
-**Let op:** Als de kalender "Rooster" niet bestaat, worden events geüpload naar je eerste beschikbare kalender.
-
-**Terug naar File Storage:**
-
-```env
-STORAGE_METHOD=file
-```
-
 ## Gebruik
 
 ### Automatisering Starten
@@ -169,52 +147,48 @@ STORAGE_METHOD=file
 python main.py
 ```
 
-De automatisering draait continu en checkt alleen op woensdag tussen 12:00-17:00 voor nieuwe emails.
+De automatisering draait continu en checkt alleen op de geconfigureerde dag/tijd voor nieuwe emails.
 
-### Handmatig Rooster Downloaden
+### Configuratie Aanpassen
 
-```bash
-python roi_scraper.py --output ./downloads
+Pas `config/config.yaml` aan om het schedule te wijzigen:
+
+```yaml
+schedule:
+  active_day: "thursday" # dag van de week
+  start_hour: 11 # start uur
+  end_hour: 24 # eind uur
 ```
-
-### Gmail Monitor Testen
-
-```bash
-python gmail_monitor.py
-```
-
-### Gedeelde Map Bekijken
-
-```bash
-python file_storage.py
-```
-
-## iPhone Shortcuts Setup
-
-Om .ics bestanden automatisch te importeren in Apple Calendar:
-
-1. Open **Shortcuts** app op iPhone
-2. Maak een nieuwe **Automation**:
-   - Trigger: "When file is added to folder"
-   - Selecteer de gedeelde map (bijv. iCloud Drive/Rooster)
-   - Filter: alleen .ics bestanden
-3. Actie: "Add to Calendar"
-   - Selecteer je gewenste kalender
-4. Zet "Ask Before Running" uit voor volledige automatisering
 
 ## Project Structuur
 
 ```
 rooster_automation/
-├── main.py                 # Hoofdscript
-├── roi_scraper.py         # ROI Online scraper
-├── gmail_monitor.py       # Gmail monitoring
-├── file_storage.py        # Bestandsbeheer
-├── config.yaml            # Configuratie
-├── requirements.txt       # Python dependencies
-├── .env                   # Environment variables (niet in git)
-├── .env.example          # Template voor .env
-└── README.md             # Deze file
+├── main.py                           # Entry point
+├── app/
+│   ├── main.py                       # Hoofd orchestrator
+│   ├── core/
+│   │   ├── settings.py               # Configuratie management
+│   │   └── utils.py                  # Utilities (retry decorator)
+│   └── services/
+│       ├── calendar_service.py       # CalDAV integratie
+│       ├── gmail_monitor.py          # Gmail IMAP monitoring
+│       └── roi_scraper.py            # Playwright scraper
+├── config/
+│   └── config.yaml                   # Configuratie
+├── tests/
+│   ├── test_caldav_connection.py     # CalDAV test
+│   └── test_file_storage_connection.py
+├── scripts/
+│   ├── investigate_site.py           # Site inspector
+│   ├── verify_navigation.py          # Navigation test
+│   └── verify_refactor.py            # Component test
+├── requirements.txt                  # Dependencies
+├── Dockerfile                        # Container setup
+├── docker-compose.yml                # Orchestration
+├── .env                              # Environment vars (niet in git)
+├── .env.example                      # Template
+└── README.md                         # Deze file
 ```
 
 ## Logging
@@ -265,26 +239,42 @@ Log levels:
 
 ### Element IDs Updaten
 
-Als ROI Online hun website update, moeten mogelijk de element IDs in `config.yaml` worden aangepast:
+Als ROI Online hun website update, moeten mogelijk de element IDs in `config/config.yaml` worden aangepast:
 
 ```yaml
 roi_online:
   month_radio_button_id: "ls_ch_i9gdcl_2"
   calendar_export_button_id: "ls_ch_ic0g"
+  week_display_id: "ls_ch_i45lDL"
+  prev_week_button_id: "ls_ch_i45lP"
+  next_week_button_id: "ls_ch_i45lN"
   # etc.
 ```
 
-Gebruik browser DevTools (F12) om de nieuwe IDs te vinden.
+Gebruik browser DevTools (F12) om de nieuwe IDs te vinden, of gebruik het helper script:
 
-### Oude Bestanden Opruimen
+```bash
+python scripts/investigate_site.py
+```
 
-Standaard worden .ics bestanden ouder dan 90 dagen automatisch verwijderd.
-Wijzig dit in `main.py`:
+### Week Navigation Testen
+
+Test de week navigation functionaliteit met:
+
+```bash
+python scripts/verify_navigation.py
+```
+
+### Oude Events Opruimen
+
+Standaard worden oude events niet automatisch verwijderd. Om events ouder dan X dagen te verwijderen, gebruik je de `delete_old_events` methode van `CalendarService`:
 
 ```python
-self.storage.cleanup_old_files(days_to_keep=90)  # Wijzig naar gewenste aantal dagen
+# In app/main.py na het uploaden van events:
+self.storage.delete_old_events(days_to_keep=90)  # Wijzig naar gewenste aantal dagen
 ```
 
 ## Support
 
 Voor vragen of problemen, check de logs in `rooster_automation.log`.
+
