@@ -7,6 +7,8 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+import re
+import time
 from playwright.sync_api import sync_playwright, Page, Download
 
 from app.core.settings import settings
@@ -76,9 +78,6 @@ class ROIScraper:
     
     def _navigate_to_week(self, page: Page, target_week: int, target_year: int = None):
         """Navigate to the specific week."""
-        import re
-        import time
-        
         target_year = target_year or datetime.now().year
         logger.info(f"Navigating to week {target_week}, {target_year}")
         
@@ -143,7 +142,7 @@ class ROIScraper:
 
 
 if __name__ == "__main__":
-    from utils import setup_logging
+    from app.core.utils import setup_logging
     setup_logging("INFO", "%(asctime)s - %(message)s", "test_scraper.log")
     
     # Simple standalone run

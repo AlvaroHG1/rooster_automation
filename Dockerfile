@@ -45,7 +45,6 @@ RUN playwright install chromium && \
     playwright install-deps chromium
 
 # Copy application code
-# Copy application code
 COPY --chown=automation:automation app/ app/
 COPY --chown=automation:automation config/ config/
 COPY --chown=automation:automation main.py .

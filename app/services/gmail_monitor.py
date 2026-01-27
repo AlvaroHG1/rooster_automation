@@ -8,6 +8,7 @@ import email
 import logging
 import time
 from email.header import decode_header
+import re
 from typing import Optional, Callable, Dict, Any
 
 from app.core.settings import settings
@@ -50,19 +51,19 @@ class GmailMonitor:
             
             if status != "OK":
                 logger.error("Failed to search emails")
-                return False
+                return {"found": False}
             
             email_ids = messages[0].split()
             if not email_ids:
                 logger.debug("No emails found from trigger sender")
-                return False
+                return {"found": False}
             
             latest_uid = email_ids[-1]
             
             if self.last_checked_uid is None:
                 logger.info(f"First run - storing latest UID: {latest_uid.decode()}")
                 self.last_checked_uid = latest_uid
-                return False
+                return {"found": False}
             
             if latest_uid > self.last_checked_uid:
                 return self._process_found_email(mail, latest_uid)
@@ -71,7 +72,7 @@ class GmailMonitor:
             
         except Exception as e:
             logger.error(f"Error checking emails: {e}")
-            return False
+            return {"found": False}
         finally:
             if mail:
                 try:
@@ -102,7 +103,6 @@ class GmailMonitor:
                 body_text = msg.get_payload(decode=True).decode()
             
             # Extract week number
-            import re
             week_match = re.search(r'week\s+(\d+)', body_text, re.IGNORECASE)
             target_week = int(week_match.group(1)) if week_match else None
             
@@ -152,7 +152,7 @@ class GmailMonitor:
                 time.sleep(interval)
 
 if __name__ == "__main__":
-    from utils import setup_logging
+    from app.core.utils import setup_logging
     setup_logging("INFO", "%(asctime)s - %(message)s", "test_monitor.log")
     
     monitor = GmailMonitor()

@@ -1,6 +1,6 @@
 """
-File Storage Module
-Handles saving .ics files to CalDAV server (e.g., iCloud Calendar).
+Calendar Service Module
+Handles uploading .ics events to CalDAV server (e.g., iCloud Calendar).
 """
 
 import logging
@@ -63,6 +63,16 @@ class CalendarService:
         self._principal = None
         self._calendar_cache = None
         logger.debug("Connection state reset")
+
+    @property
+    def caldav_url(self) -> str:
+        """Get the configured CalDAV URL."""
+        return settings.caldav_url
+
+    @property
+    def calendar_name(self) -> str:
+        """Get the configured calendar name."""
+        return settings.caldav_calendar_name
 
     @retry_on_failure(retries=2, delay=1)
     def get_calendar(self):
