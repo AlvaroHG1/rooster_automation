@@ -1,16 +1,17 @@
 """
 Gmail Monitor Module
-Monitors Gmail inbox for trigger emails from noreply@staff.nl
+Monitors Gmail inbox for trigger emails.
 """
 
-import os
-import logging
-from datetime import datetime
-from typing import Optional, Callable
 import imaplib
 import email
-from email.header import decode_header
+import logging
 import time
+from email.header import decode_header
+from typing import Optional, Callable, Dict, Any
+
+from settings import settings
+from utils import retry_on_failure
 
 logger = logging.getLogger(__name__)
 
@@ -19,93 +20,82 @@ class GmailMonitor:
     """Monitor Gmail inbox for trigger emails."""
     
     def __init__(self):
-        """Initialize Gmail monitor with credentials from environment."""
-        self.email_address = os.getenv('GMAIL_ADDRESS')
-        self.app_password = os.getenv('GMAIL_APP_PASSWORD')
-        self.trigger_sender = os.getenv('TRIGGER_EMAIL_SENDER', 'noreply@staff.nl')
-        
-        if not self.email_address or not self.app_password:
-            raise ValueError("GMAIL_ADDRESS and GMAIL_APP_PASSWORD must be set")
-        
-        self.last_checked_uid = None
+        """Initialize Gmail monitor."""
+        self.last_checked_uid: Optional[bytes] = None
+        logger.info(f"GmailMonitor initialized for {settings.gmail_address}")
     
-    def connect(self) -> imaplib.IMAP4_SSL:
+    @retry_on_failure(retries=3, delay=5)
+    def connect(self, timeout: int = 10) -> imaplib.IMAP4_SSL:
         """Connect to Gmail via IMAP."""
-        logger.info("Connecting to Gmail")
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(self.email_address, self.app_password)
+        logger.debug("Connecting to Gmail IMAP...")
+        
+        mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=timeout)
+        mail.login(settings.gmail_address, settings.gmail_app_password)
+        
+        logger.debug("✓ Successfully connected to Gmail")
         return mail
     
     def check_for_trigger_email(self) -> bool:
-        """
-        Check if there's a new email from the trigger sender.
-        
-        Returns:
-            True if trigger email found, False otherwise
-        """
+        """Check if there's a new email from the trigger sender."""
+        mail = None
         try:
-            mail = self.connect()
+            mail = self.connect(timeout=15)
             mail.select("inbox")
             
-            # Search for emails from trigger sender
-            search_criteria = f'(FROM "{self.trigger_sender}")'
-            logger.debug(f"Searching for emails with criteria: {search_criteria}")
+            sender = settings.trigger_sender
+            search_criteria = f'(OR FROM "{sender}" SUBJECT "Fwd: Nieuw rooster gepubliceerd")'
             
+            logger.debug(f"Searching for emails: {search_criteria}")
             status, messages = mail.search(None, search_criteria)
             
             if status != "OK":
                 logger.error("Failed to search emails")
-                mail.logout()
                 return False
             
             email_ids = messages[0].split()
-            
             if not email_ids:
                 logger.debug("No emails found from trigger sender")
-                mail.logout()
                 return False
             
-            # Get the latest email UID
             latest_uid = email_ids[-1]
             
-            # Check if this is a new email (we haven't seen it before)
             if self.last_checked_uid is None:
-                # First run - just store the UID, don't trigger
-                logger.info(f"First run - storing latest UID: {latest_uid}")
+                logger.info(f"First run - storing latest UID: {latest_uid.decode()}")
                 self.last_checked_uid = latest_uid
-                mail.logout()
                 return False
             
             if latest_uid > self.last_checked_uid:
-                # New email found!
-                logger.info(f"New trigger email found! UID: {latest_uid}")
-                
-                # Fetch email details for logging
-                status, msg_data = mail.fetch(latest_uid, "(RFC822)")
-                if status == "OK":
-                    email_body = msg_data[0][1]
-                    email_message = email.message_from_bytes(email_body)
-                    subject = self._decode_header(email_message["Subject"])
-                    from_addr = email_message.get("From")
-                    date = email_message.get("Date")
-                    
-                    logger.info(f"Email details - From: {from_addr}, Subject: {subject}, Date: {date}")
-                
+                self._log_email_details(mail, latest_uid)
                 self.last_checked_uid = latest_uid
-                mail.logout()
                 return True
             
-            logger.debug("No new emails since last check")
-            mail.logout()
             return False
             
         except Exception as e:
             logger.error(f"Error checking emails: {e}")
             return False
-    
+        finally:
+            if mail:
+                try:
+                    mail.logout()
+                except:
+                    pass
+
+    def _log_email_details(self, mail, uid):
+        """Log details of the found email."""
+        try:
+            status, msg_data = mail.fetch(uid, "(RFC822)")
+            if status == "OK":
+                email_body = msg_data[0][1]
+                msg = email.message_from_bytes(email_body)
+                subject = self._decode_header(msg["Subject"])
+                logger.info(f"New trigger email! Subject: {subject}")
+        except Exception as e:
+            logger.warning(f"Could not fetch email details: {e}")
+
     def _decode_header(self, header: str) -> str:
         """Decode email header."""
-        if header is None:
+        if not header:
             return ""
         decoded = decode_header(header)
         result = ""
@@ -116,57 +106,26 @@ class GmailMonitor:
                 result += part
         return result
     
-    def monitor(self, callback: Callable, check_interval: int = 600):
-        """
-        Monitor inbox and call callback when trigger email is found.
-        
-        Args:
-            callback: Function to call when trigger email is found
-            check_interval: Seconds between checks (default: 600 = 10 minutes)
-        """
-        logger.info(f"Starting email monitoring (checking every {check_interval}s)")
+    def monitor(self, callback: Callable, check_interval: Optional[int] = None):
+        """Monitor inbox and call callback when trigger email is found."""
+        interval = check_interval or settings.gmail_check_interval
+        logger.info(f"Starting monitoring loop (checking every {interval}s)")
         
         while True:
             try:
                 if self.check_for_trigger_email():
-                    logger.info("Trigger email detected! Calling callback...")
+                    logger.info("Trigger detected! Executing callback...")
                     callback()
-                else:
-                    logger.debug("No trigger email found")
-                
-                # Wait before next check
-                time.sleep(check_interval)
-                
+                time.sleep(interval)
             except KeyboardInterrupt:
-                logger.info("Monitoring stopped by user")
                 break
             except Exception as e:
-                logger.error(f"Error in monitoring loop: {e}")
-                time.sleep(check_interval)
-
-
-def main():
-    """Test function to run the monitor standalone."""
-    from dotenv import load_dotenv
-    
-    # Load environment variables
-    load_dotenv()
-    
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    def test_callback():
-        print("✓ Trigger email detected!")
-    
-    monitor = GmailMonitor()
-    print(f"Monitoring {monitor.email_address} for emails from {monitor.trigger_sender}")
-    print("Press Ctrl+C to stop")
-    
-    monitor.monitor(test_callback, check_interval=30)  # Check every 30 seconds for testing
-
+                logger.error(f"Error in monitor loop: {e}")
+                time.sleep(interval)
 
 if __name__ == "__main__":
-    main()
+    from utils import setup_logging
+    setup_logging("INFO", "%(asctime)s - %(message)s", "test_monitor.log")
+    
+    monitor = GmailMonitor()
+    monitor.monitor(lambda: print("Callback executed!"), check_interval=10)
