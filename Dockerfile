@@ -26,10 +26,10 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd -m -u 1000 automation && \
-    mkdir -p /app /app/shared /app/logs && \
-    chown -R automation:automation /app
+# Create non-root user with home directory
+RUN useradd -m -u 1000 -d /home/automation automation && \
+    mkdir -p /app /app/shared /app/logs /app/config && \
+    chown -R automation:automation /app /home/automation
 
 # Set working directory
 WORKDIR /app
@@ -40,9 +40,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN playwright install chromium && \
-    playwright install-deps chromium
+# Install Playwright system dependencies (requires root)
+RUN playwright install-deps chromium
 
 # Copy application code
 COPY --chown=automation:automation app/ app/
@@ -52,8 +51,12 @@ COPY --chown=automation:automation main.py .
 # Switch to non-root user
 USER automation
 
+# Install Playwright browsers as non-root user (stores in user's home)
+RUN playwright install chromium
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV HOME=/home/automation
 
 # Run the application
 CMD ["python", "main.py"]

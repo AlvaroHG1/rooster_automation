@@ -8,6 +8,9 @@ services:
       # Environment variables (read-only)
       - ./.env:/app/.env:ro
 
+      # Google API credentials (credentials.json, token.json)
+      - ./config:/app/config
+
       # Shared folder for .ics files
       # Change './shared' to your desired path on the host
       - ./shared:/app/shared

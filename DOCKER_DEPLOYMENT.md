@@ -44,13 +44,25 @@ ROI_EMAIL=alvarogroenewegen@gmail.com
 ROI_PASSWORD=jouw_wachtwoord
 
 GMAIL_ADDRESS=ahgautomations2@gmail.com
-GMAIL_APP_PASSWORD=jouw_gmail_app_wachtwoord
+# Gmail API uses OAuth - see step 3b for credential setup
 
 # Wordt automatisch /app/shared in container
 SHARED_FOLDER_PATH=/app/shared
 
 TRIGGER_EMAIL_SENDER=noreply@staff.nl
 ```
+
+### 3b. Gmail API Credentials
+
+Voor Gmail API authenticatie heb je `credentials.json` en `token.json` nodig:
+
+1. Plaats `credentials.json` (van Google Cloud Console) in de `config/` folder
+2. Voer lokaal éénmalig uit om `token.json` te genereren:
+   ```bash
+   python main.py
+   ```
+3. Kopieer de gegenereerde `token.json` naar de `config/` folder
+4. De container mount automatisch `./config:/app/config`
 
 ### 4. Start Container
 
