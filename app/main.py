@@ -47,7 +47,7 @@ class RoosterAutomation:
         logger.info("Using CalDAV storage (iCloud Calendar)")
         self.storage = CalendarService()
         
-        self.active_day = settings.active_day
+        self.active_days = settings.active_days
         self.start_hour = settings.start_hour
         self.end_hour = settings.end_hour
         
@@ -57,7 +57,7 @@ class RoosterAutomation:
         
         # Check day of week
         day_name = now.strftime('%A').lower()
-        if day_name != self.active_day:
+        if day_name not in self.active_days:
             return False
         
         # Check hour
@@ -114,7 +114,8 @@ class RoosterAutomation:
         """Run the automation with scheduled checks."""
         logger.info("=" * 60)
         logger.info("Rooster Automation Started")
-        logger.info(f"Active: {self.active_day.capitalize()} {self.start_hour}:00-{self.end_hour}:00")
+        days_display = ', '.join(d.capitalize() for d in self.active_days)
+        logger.info(f"Active days: {days_display} ({self.start_hour}:00-{self.end_hour}:00)")
         logger.info(f"Check interval: {settings.gmail_check_interval} seconds")
         logger.info(f"Storage: CalDAV ({self.storage.caldav_url})")
         logger.info(f"Calendar: {self.storage.calendar_name}")

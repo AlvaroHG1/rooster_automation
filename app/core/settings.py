@@ -6,7 +6,7 @@ Loads settings from environment variables and config.yaml.
 import os
 import logging
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, List
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -114,8 +114,24 @@ class Settings:
 
     # Schedule Settings
     @property
-    def active_day(self) -> str:
-        return self._config['schedule']['active_day'].lower()
+    def active_days(self) -> List[str]:
+        """Get list of active days. Supports both 'active_days' (list) and 'active_day' (string) config."""
+        schedule = self._config['schedule']
+        
+        # Check for new 'active_days' list format first
+        if 'active_days' in schedule:
+            days = schedule['active_days']
+            if isinstance(days, list):
+                return [d.lower() for d in days]
+            elif isinstance(days, str):
+                return [days.lower()]
+        
+        # Fall back to old 'active_day' string format
+        if 'active_day' in schedule:
+            return [schedule['active_day'].lower()]
+        
+        # Default to all days if nothing specified
+        return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
     @property
     def start_hour(self) -> int:
