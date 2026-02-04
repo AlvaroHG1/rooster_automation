@@ -41,7 +41,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright system dependencies (requires root)
-RUN playwright install-deps chromium
+# Update apt cache first to ensure package availability
+RUN apt-get update && \
+    playwright install-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY --chown=automation:automation app/ app/
