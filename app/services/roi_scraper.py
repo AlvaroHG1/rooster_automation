@@ -77,49 +77,71 @@ class ROIScraper:
         page.wait_for_load_state('networkidle')
     
     def _navigate_to_week(self, page: Page, target_week: int, target_year: int = None):
-        """Navigate to the specific week."""
+        """Navigate to the specific week using robust ISO date math."""
         target_year = target_year or datetime.now().year
         logger.info(f"Navigating to week {target_week}, {target_year}")
         
-        # Get current displayed week
-        # Format is usually "2025 week 05"
-        week_display = page.inner_text(f"#{settings.roi_week_display}")
-        logger.debug(f"Current week display: {week_display}")
+        MAX_RETRIES = 5  # preventing infinite loops if navigation fails repeatedly
+        MAX_CLICKS = 30  # preventing infinite loops if target is unreachable
         
-        match = re.search(r'(\d{4})\s+week\s+(\d+)', week_display, re.IGNORECASE)
-        if not match:
-            logger.warning(f"Could not parse week display: {week_display}. Skipping navigation.")
-            return
+        for attempt in range(MAX_RETRIES):
+             # Get current displayed week
+            try:
+                week_display = page.inner_text(f"#{settings.roi_week_display}", timeout=5000)
+            except Exception as e:
+                logger.warning(f"Could not read week display: {e}. Retrying...")
+                continue
 
-        current_year = int(match.group(1))
-        current_week = int(match.group(2))
-        
-        # Simple logic: assume we are close to the target.
-        # If difference is huge, maybe we should skip (safety break)
-        diff = (target_year - current_year) * 52 + (target_week - current_week)
-        
-        if diff == 0:
-            logger.info("Already at target week.")
-            return
+            logger.debug(f"Current week display: {week_display}")
             
-        if abs(diff) > 20:
-             logger.warning(f"Target week is too far ({diff} weeks). Safety break.")
-             return
-             
-        button_id = settings.roi_next_week_button if diff > 0 else settings.roi_prev_week_button
-        clicks = abs(diff)
-        
-        logger.info(f"Clicking {clicks} times to reach target...")
-        
-        for i in range(clicks):
-            page.click(f"#{button_id}")
-            # Wait for update - relying on networkidle might be enough, but adding small sleep for safety if AJAX is fast but update slow
+            match = re.search(r'(\d{4})\s+week\s+(\d+)', week_display, re.IGNORECASE)
+            if not match:
+                logger.warning(f"Could not parse week display: {week_display}. Stopping navigation.")
+                return
+
+            current_year = int(match.group(1))
+            current_week = int(match.group(2))
+            
+            # Use ISO date math to calculate exact week difference
+            try:
+                # %G = ISO Year, %V = ISO Week, %u = Weekday (1=Mon)
+                current_date = datetime.strptime(f"{current_year} {current_week} 1", "%G %V %u")
+                target_date = datetime.strptime(f"{target_year} {target_week} 1", "%G %V %u")
+                
+                diff_days = (target_date - current_date).days
+                diff_weeks = int(diff_days / 7)
+            except ValueError as e:
+                logger.error(f"Date calculation error: {e}")
+                return
+
+            if diff_weeks == 0:
+                logger.info("✓ Successfully reached target week.")
+                return
+
+            if abs(diff_weeks) > MAX_CLICKS:
+                 logger.warning(f"Target is too far ({diff_weeks} weeks). Safety break.")
+                 return
+                 
+            # Click towards the target
+            button_id = settings.roi_next_week_button if diff_weeks > 0 else settings.roi_prev_week_button
+            
+            # Optimize clicking: Don't click all at once if gap is huge, but do small batches
+            # Here we click once and check again to be safe and robust against network lag
+            # Or we could click a few times. Let's click min(abs(diff), 5) times to speed up but re-check often.
+            clicks_to_perform = min(abs(diff_weeks), 5)
+            
+            logger.info(f"Gap is {diff_weeks} weeks. Clicking {clicks_to_perform} times...")
+            
+            for _ in range(clicks_to_perform):
+                page.click(f"#{button_id}")
+                # Small wait between clicks to ensure UI registers them
+                time.sleep(0.2)
+            
+            # Wait for meaningful update
             page.wait_for_load_state('networkidle')
-            time.sleep(0.5) 
+            time.sleep(0.5)
             
-        # Verify
-        new_display = page.inner_text(f"#{settings.roi_week_display}")
-        logger.info(f"Navigation complete. New display: {new_display}")
+        logger.warning("Max retries reached without hitting target week.")
 
     def _download_ics(self, page: Page, output_path: str, target_week: int = None, target_year: int = None) -> str:
         """Handle the file download."""
