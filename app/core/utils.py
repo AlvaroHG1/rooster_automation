@@ -50,17 +50,4 @@ def retry_on_failure(
         return wrapper
     return decorator
 
-def setup_logging(level_name: str, format_str: str, file_path: str):
-    """
-    Configure logging for the application.
-    """
-    level = getattr(logging, level_name.upper(), logging.INFO)
-    
-    logging.basicConfig(
-        level=level,
-        format=format_str,
-        handlers=[
-            logging.FileHandler(file_path),
-            logging.StreamHandler()
-        ]
-    )
+# setup_logging moved to app.core.logging_config
