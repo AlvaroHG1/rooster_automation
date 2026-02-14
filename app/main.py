@@ -3,31 +3,27 @@ Rooster Automation - Main Orchestration Script
 Monitors Gmail for trigger emails and downloads ROI Online roster.
 """
 
-import os
 import logging
 import schedule
 import time
 from datetime import datetime
 from dotenv import load_dotenv
-import yaml
 
 from app.services.roi_scraper import ROIScraper
 from app.services.gmail_monitor import GmailMonitor
 from app.services.calendar_service import CalendarService
 from app.core.settings import settings
+from app.core.logging_config import setup_logging
 
 
 # Load environment variables
 load_dotenv()
 
-# Set up logging
-logging.basicConfig(
-    level=getattr(logging, settings.logging_level),
-    format=settings.logging_format,
-    handlers=[
-        logging.FileHandler(settings.logging_file),
-        logging.StreamHandler()
-    ]
+# Set up logging centrally
+setup_logging(
+    level_name=settings.logging.level,
+    format_str=settings.logging.format,
+    file_path=settings.logging.file
 )
 
 logger = logging.getLogger(__name__)
@@ -47,9 +43,9 @@ class RoosterAutomation:
         logger.info("Using CalDAV storage (iCloud Calendar)")
         self.storage = CalendarService()
         
-        self.active_days = settings.active_days
-        self.start_hour = settings.start_hour
-        self.end_hour = settings.end_hour
+        self.active_days = settings.schedule.active_days
+        self.start_hour = settings.schedule.start_hour
+        self.end_hour = settings.schedule.end_hour
         
     def is_active_time(self) -> bool:
         """Check if current time is within active schedule."""
@@ -87,8 +83,8 @@ class RoosterAutomation:
             logger.info(f"✓ {result}")
             logger.info("Events are now synced to your iCloud Calendar")
             
-            # Optional: cleanup old CalDAV events
-            # self.storage.delete_old_events(days_to_keep=90)
+            # Auto-cleanup old events (now fast thanks to server-side search)
+            self.storage.delete_old_events(days_to_keep=90)
             
             logger.info("=" * 60)
             
@@ -116,14 +112,14 @@ class RoosterAutomation:
         logger.info("Rooster Automation Started")
         days_display = ', '.join(d.capitalize() for d in self.active_days)
         logger.info(f"Active days: {days_display} ({self.start_hour}:00-{self.end_hour}:00)")
-        logger.info(f"Check interval: {settings.gmail_check_interval} seconds")
-        logger.info(f"Storage: CalDAV ({self.storage.caldav_url})")
-        logger.info(f"Calendar: {self.storage.calendar_name}")
+        logger.info(f"Check interval: {settings.gmail.check_interval_minutes * 60} seconds")
+        logger.info(f"Storage: CalDAV ({settings.caldav.url})")
+        logger.info(f"Calendar: {settings.caldav.calendar_name}")
         logger.info("=" * 60)
         
         # Schedule the email check
         # settings.gmail_check_interval is in seconds
-        interval_minutes = int(settings.gmail_check_interval / 60)
+        interval_minutes = settings.gmail.check_interval_minutes
         schedule.every(interval_minutes).minutes.do(self.check_email_and_download)
         
         # Run initial check (with error handling to prevent startup hang)

@@ -10,6 +10,7 @@ import time
 from email.header import decode_header
 import re
 from typing import Optional, Callable, Dict, Any
+from contextlib import contextmanager
 
 from app.core.settings import settings
 from app.core.utils import retry_on_failure
@@ -25,60 +26,64 @@ class GmailMonitor:
         self.last_checked_uid: Optional[bytes] = None
         logger.info(f"GmailMonitor initialized for {settings.gmail_address}")
     
-    @retry_on_failure(retries=3, delay=5)
-    def connect(self, timeout: int = 10) -> imaplib.IMAP4_SSL:
-        """Connect to Gmail via IMAP."""
+    @contextmanager
+    def connect(self, timeout: int = 10):
+        """Connect to Gmail via IMAP using a context manager."""
         logger.debug("Connecting to Gmail IMAP...")
-        
-        mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=timeout)
-        mail.login(settings.gmail_address, settings.gmail_app_password)
-        
-        logger.debug("✓ Successfully connected to Gmail")
-        return mail
-    
-    def check_for_trigger_email(self) -> Dict[str, Any]:
-        """Check if there's a new email from the trigger sender."""
         mail = None
         try:
-            mail = self.connect(timeout=15)
-            mail.select("inbox")
-            
-            sender = settings.trigger_sender
-            search_criteria = f'(OR FROM "{sender}" SUBJECT "Fwd: Nieuw rooster gepubliceerd")'
-            
-            logger.debug(f"Searching for emails: {search_criteria}")
-            status, messages = mail.search(None, search_criteria)
-            
-            if status != "OK":
-                logger.error("Failed to search emails")
-                return {"found": False}
-            
-            email_ids = messages[0].split()
-            if not email_ids:
-                logger.debug("No emails found from trigger sender")
-                return {"found": False}
-            
-            latest_uid = email_ids[-1]
-            
-            if self.last_checked_uid is None:
-                logger.info(f"First run - storing latest UID: {latest_uid.decode()}")
-                self.last_checked_uid = latest_uid
-                return {"found": False}
-            
-            if latest_uid > self.last_checked_uid:
-                return self._process_found_email(mail, latest_uid)
-            
-            return {"found": False}
-            
+            mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=timeout)
+            mail.login(settings.gmail.address, settings.gmail.app_password)
+            logger.debug("✓ Successfully connected to Gmail")
+            yield mail
         except Exception as e:
-            logger.error(f"Error checking emails: {e}")
-            return {"found": False}
+            logger.error(f"Gmail connection failed: {e}")
+            raise
         finally:
             if mail:
                 try:
                     mail.logout()
-                except:
+                    logger.debug("Gmail connection closed")
+                except Exception:
                     pass
+    
+    def check_for_trigger_email(self) -> Dict[str, Any]:
+        """Check if there's a new email from the trigger sender."""
+        try:
+            with self.connect(timeout=15) as mail:
+                mail.select("inbox")
+                
+                sender = settings.gmail.trigger_sender
+                # Tighter regex/search: check specifically for "Nieuw rooster" in subject
+                search_criteria = f'(OR FROM "{sender}" FROM "rooster@roi-online.nl")'
+                
+                logger.debug(f"Searching for emails from: {sender}")
+                status, messages = mail.search(None, search_criteria)
+                
+                if status != "OK":
+                    logger.error("Failed to search emails")
+                    return {"found": False}
+                
+                email_ids = messages[0].split()
+                if not email_ids:
+                    logger.debug("No emails found from trigger sender")
+                    return {"found": False}
+                
+                latest_uid = email_ids[-1]
+                
+                if self.last_checked_uid is None:
+                    logger.info(f"First run - storing latest UID: {latest_uid.decode()}")
+                    self.last_checked_uid = latest_uid
+                    return {"found": False}
+                
+                if latest_uid > self.last_checked_uid:
+                    return self._process_found_email(mail, latest_uid)
+                
+                return {"found": False}
+            
+        except Exception as e:
+            logger.error(f"Error checking emails: {e}")
+            return {"found": False}
 
     def _process_found_email(self, mail, uid) -> Dict[str, Any]:
         """Process a found email and extract week information."""
