@@ -120,13 +120,17 @@ class CalendarService:
         """Upload events from parsed calendar to CalDAV."""
         logger.info(f"Uploading events to calendar: {calendar.name}")
         
+        # Extract VTIMEZONE components to include in every single-event ICS
+        # This ensures timezone references (TZID) in events are valid
+        timezones = [c for c in cal.walk() if c.name == 'VTIMEZONE']
+        
         events_uploaded = 0
         events_failed = 0
         failed_events = []
         
         for component in cal.walk():
             if component.name == "VEVENT":
-                if self._upload_single_event(calendar, cal, component):
+                if self._upload_single_event(calendar, cal, component, timezones):
                     events_uploaded += 1
                 else:
                     events_failed += 1
@@ -142,16 +146,24 @@ class CalendarService:
 
         return f"Uploaded {events_uploaded} events to calendar: {calendar.name}"
 
-    def _upload_single_event(self, calendar, source_cal, component) -> bool:
+    def _upload_single_event(self, calendar, source_cal, component, timezones=None) -> bool:
         """Helper to upload a single event with retry."""
         event_summary = component.get('SUMMARY', 'No title')
         
         try:
             # Create a new calendar object for the single event
             event_cal = Calendar()
-            for key in source_cal.keys():
-                if key not in ['VEVENT']:
-                    event_cal.add(key, source_cal[key])
+            
+            # Copy basic properties (PRODID, VERSION, etc.)
+            for key, value in source_cal.items():
+                event_cal.add(key, value)
+            
+            # Add timezones if available
+            if timezones:
+                for tz in timezones:
+                    event_cal.add_component(tz)
+            
+            # Add the event itself
             event_cal.add_component(component)
             
             event_ics = event_cal.to_ical().decode('utf-8')
@@ -188,27 +200,32 @@ class CalendarService:
     
     @retry_on_failure(retries=2, delay=1)
     def delete_old_events(self, days_to_keep: int = 90) -> int:
-        """Remove events older than specified days."""
+        """Remove events older than specified days using server-side filtering."""
         logger.info(f"Cleaning up events older than {days_to_keep} days")
         
         calendar = self.get_calendar()
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+        # Look back up to 5 years to ensure we catch old stuff without querying "forever"
+        start_date = cutoff_date - timedelta(days=365 * 5)
         
-        events = calendar.events()
+        try:
+            # Server-side search is O(log N) or O(1) depending on server implementation
+            # compared to O(N) client-side iteration
+            events = calendar.date_search(start=start_date, end=cutoff_date)
+            logger.info(f"Found {len(events)} old events to delete (Server-side search)")
+        except Exception as e:
+            logger.warning(f"Server-side search failed: {e}. Aborting cleanup to avoid O(N) impact.")
+            return 0
+        
         removed_count = 0
         
+        # Batch deletion could be faster if supported, but simple iteration on the *result set* is already much better
         for event in events:
             try:
-                event_data = event.icalendar_component
-                # Basic check for dtend - complex recurrence rules not handled here
-                if hasattr(event_data, 'dtend'):
-                    dt = event_data.dtend.dt
-                    # Handle both naive and aware datetimes if needed
-                    if dt.replace(tzinfo=None) < cutoff_date.replace(tzinfo=None):
-                        event.delete()
-                        removed_count += 1
+                event.delete()
+                removed_count += 1
             except Exception as e:
-                logger.warning(f"Could not process event for deletion: {e}")
+                logger.warning(f"Could not delete event: {e}")
         
         logger.info(f"✓ Cleanup complete. Removed {removed_count} old events")
         return removed_count
