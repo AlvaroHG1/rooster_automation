@@ -1,280 +1,271 @@
-# Rooster Automation
+<p align="center">
+  <img src="https://img.icons8.com/fluency/96/calendar.png" alt="Rooster Automation Logo" width="96" height="96"/>
+</p>
 
-Automatische download van maandrooster van ROI Online naar Apple Calendar via iPhone Shortcuts.
+<h1 align="center">🐓 Rooster Automation</h1>
 
-## Overzicht
+<p align="center">
+  <strong>Automatically sync your work schedule to iCloud Calendar — hands-free.</strong>
+</p>
 
-Deze automatisering:
+<p align="center">
+  <a href="#-features"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"/></a>
+  <a href="#-quick-start"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Ready"/></a>
+  <a href="#-how-it-works"><img src="https://img.shields.io/badge/Playwright-Headless-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright"/></a>
+  <a href="#-caldav-setup"><img src="https://img.shields.io/badge/iCloud-CalDAV-999999?style=for-the-badge&logo=apple&logoColor=white" alt="iCloud CalDAV"/></a>
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"/>
+</p>
 
-1. Monitort Gmail inbox voor emails van `noreply@staff.nl`
-2. Draait alleen op **donderdag tussen 11:00-24:00** (configureerbaar in `config.yaml`)
-3. Download het rooster van ROI Online als .ics bestand
-4. Upload events automatisch naar iCloud Calendar via CalDAV
-5. Sync automatisch naar alle Apple devices
+<p align="center">
+  <sub>Monitors your email → scrapes your work roster → pushes it to your calendar. Every week. Zero effort.</sub>
+</p>
 
-**Voordelen:**
+---
 
-- ✅ Automatische sync naar alle Apple devices
-- ✅ Geen handmatige stappen vereist
-- ✅ Events direct in je kalender
-- ✅ Week-specifieke roosters worden ondersteund
+## 📖 What is Rooster Automation?
 
-## Installatie (Lokaal - zonder Docker)
+**Rooster Automation** is a fully automated Python pipeline that keeps your calendar up-to-date with your work schedule from the **ROI Online** staff portal.
 
-> **💡 Tip**: Voor VM deployment, gebruik de Docker methode hierboven.
+> **The problem:** Every week a new roster is published, and you have to manually download and import it.
+>
+> **The solution:** A background service that does it all for you — from detecting the email notification to having the events show up on your iPhone.
 
-### 1. Python Dependencies
+---
 
-```bash
-# Installeer dependencies
-pip install -r requirements.txt
+## ✨ Features
 
-# Installeer Playwright browsers
-playwright install chromium
+|     | Feature              | Description                                                           |
+| --- | -------------------- | --------------------------------------------------------------------- |
+| 📬  | **Email Trigger**    | Monitors Gmail via IMAP for new roster notifications                  |
+| 🤖  | **Auto Scraping**    | Uses Playwright to navigate and download `.ics` files from ROI Online |
+| 📅  | **Calendar Sync**    | Uploads events directly to iCloud Calendar via CalDAV                 |
+| 📱  | **Apple Ecosystem**  | Syncs across all your Apple devices instantly                         |
+| 🕐  | **Smart Scheduling** | Only runs during configurable time windows (day & hours)              |
+| 🔄  | **Retry Logic**      | Exponential backoff on failures for maximum reliability               |
+| 🧹  | **Auto Cleanup**     | Removes events older than 90 days to keep your calendar clean         |
+| 🐳  | **Docker Ready**     | One-command deployment with Docker Compose                            |
+
+---
+
+## 🔄 How It Works
+
+```mermaid
+graph LR
+    A["📬 Gmail Inbox"] -->|IMAP check every 10 min| B["🔍 Gmail Monitor"]
+    B -->|Trigger email found| C["🤖 ROI Scraper"]
+    C -->|Playwright login + navigate| D["📄 .ics Download"]
+    D -->|Parse & upload events| E["📅 CalDAV Service"]
+    E -->|Sync| F["☁️ iCloud Calendar"]
+    F -->|Auto-sync| G["📱 All Apple Devices"]
+
+    style A fill:#EA4335,stroke:#EA4335,color:#fff
+    style B fill:#FBBC04,stroke:#FBBC04,color:#333
+    style C fill:#34A853,stroke:#34A853,color:#fff
+    style D fill:#4285F4,stroke:#4285F4,color:#fff
+    style E fill:#9C27B0,stroke:#9C27B0,color:#fff
+    style F fill:#607D8B,stroke:#607D8B,color:#fff
+    style G fill:#333,stroke:#333,color:#fff
 ```
 
-### 2. Environment Variables
+---
 
-Kopieer `.env.example` naar `.env` en vul de waarden in:
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended)
 
 ```bash
+# Clone the repository
+git clone https://github.com/AlvaroHG/rooster_automation.git
+cd rooster_automation
+
+# Configure environment
 cp .env.example .env
+# Edit .env with your credentials (see Configuration below)
+
+# Launch
+docker compose up -d
 ```
 
-Bewerk `.env`:
-
-```env
-# ROI Online Credentials
-ROI_EMAIL=jouw_email_adres
-ROI_PASSWORD=jouw_wachtwoord
-
-# Gmail Settings
-GMAIL_ADDRESS=jouw_gmail_app_adres
-GMAIL_APP_PASSWORD=jouw_gmail_app_wachtwoord
-
-# Trigger Email
-TRIGGER_EMAIL_SENDER=noreply@staff.nl
-
-# CalDAV Configuratie (iCloud Calendar)
-CALDAV_URL=https://caldav.icloud.com
-CALDAV_USERNAME=jouw_apple_id@icloud.com
-CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
-CALDAV_CALENDAR_NAME=Rooster
-```
-
-### 3. CalDAV Setup (iCloud Calendar)
-
-Deze applicatie gebruikt CalDAV om events direct naar je iCloud Calendar te uploaden.
-
-**Setup:**
-
-1. **Genereer een App-Specific Password voor iCloud:**
-   - Ga naar [appleid.apple.com](https://appleid.apple.com/account/manage)
-   - Klik op "Sign-In and Security" → "App-Specific Passwords"
-   - Klik op "Generate an app-specific password"
-   - Geef het een naam (bijv. "Rooster Automation")
-   - Kopieer het gegenereerde wachtwoord
-
-2. **Maak een "Rooster" kalender aan in iCloud:**
-   - Open Calendar app op je Mac/iPhone
-   - Maak een nieuwe kalender aan met de naam "Rooster"
-   - Zorg dat deze gesynchroniseerd is met iCloud
-
-3. **De CalDAV credentials zijn al in je `.env` bestand gezet** (zie stap 2)
-
-**Let op:** Als de kalender "Rooster" niet bestaat, worden events geüpload naar je eerste beschikbare kalender.
-
-### 4. Gmail API Setup (OAuth 2.0)
-
-Voor Gmail monitoring gebruikt de applicatie IMAP met een app-specific password (al ingesteld in `.env`).
-
-**Alternatief: Gmail API (Optioneel)**
-
-Als je de Gmail API wilt gebruiken in plaats van IMAP:
-
-#### Stap 1: Google Cloud Project Aanmaken
-
-1. Ga naar [Google Cloud Console](https://console.cloud.google.com)
-2. Klik op "Select a project" → "New Project"
-3. Geef het project een naam (bijv. "Rooster Automation")
-4. Klik op "Create"
-
-#### Stap 2: Gmail API Inschakelen
-
-1. Selecteer je nieuwe project
-2. Ga naar "APIs & Services" → "Library"
-3. Zoek naar "Gmail API"
-4. Klik op "Enable"
-
-#### Stap 3: OAuth 2.0 Credentials Aanmaken
-
-1. Ga naar "APIs & Services" → "Credentials"
-2. Klik op "Configure Consent Screen"
-   - Kies "External" (tenzij je een Google Workspace account hebt)
-   - Vul app naam in: "Rooster Automation"
-   - Vul je email adres in bij "User support email" en "Developer contact"
-   - Klik op "Save and Continue"
-   - Skip "Scopes" (klik "Save and Continue")
-   - Bij "Test users": voeg `ahgautomations2@gmail.com` toe
-   - Klik op "Save and Continue"
-3. Ga terug naar "Credentials"
-4. Klik op "+ CREATE CREDENTIALS" → "OAuth client ID"
-5. Application type: **Desktop app**
-6. Name: "Rooster Automation Desktop"
-7. Klik op "Create"
-8. **Download** het credentials bestand
-9. Hernoem het naar `credentials.json`
-10. Plaats het in de project folder: `c:\Users\Alvaro\vscode\rooster_automation\`
-
-#### Stap 4: Eerste Authenticatie
-
-Bij de eerste keer dat je de applicatie start:
-
-1. Een browser venster opent automatisch
-2. Login met `ahgautomations2@gmail.com`
-3. Klik op "Advanced" → "Go to Rooster Automation (unsafe)"
-4. Klik op "Allow" om toegang te geven
-5. Een `token.json` bestand wordt automatisch aangemaakt
-6. Vanaf nu werkt het automatisch (geen re-authenticatie nodig)
-
-**Let op:** De `token.json` vernieuwt zichzelf automatisch. Je hoeft nooit opnieuw te authenticeren, tenzij je de token handmatig verwijdert.
-
-## Gebruik
-
-### Automatisering Starten
+### Option 2: Local Python
 
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+playwright install chromium
+
+# Configure
+cp .env.example .env
+# Edit .env with your credentials
+
+# Run
 python main.py
 ```
 
-De automatisering draait continu en checkt alleen op de geconfigureerde dag/tijd voor nieuwe emails.
+---
 
-### Configuratie Aanpassen
+## ⚙️ Configuration
 
-Pas `config/config.yaml` aan om het schedule te wijzigen:
+### Environment Variables (`.env`)
+
+| Variable               | Description                  | Required |
+| ---------------------- | ---------------------------- | -------- |
+| `ROI_EMAIL`            | ROI Online login email       | ✅       |
+| `ROI_PASSWORD`         | ROI Online password          | ✅       |
+| `GMAIL_ADDRESS`        | Gmail address for monitoring | ✅       |
+| `GMAIL_APP_PASSWORD`   | Gmail app-specific password  | ✅       |
+| `TRIGGER_EMAIL_SENDER` | Roster notification sender   | ✅       |
+| `CALDAV_URL`           | CalDAV server URL            | ✅       |
+| `CALDAV_USERNAME`      | Apple ID email               | ✅       |
+| `CALDAV_PASSWORD`      | iCloud app-specific password | ✅       |
+| `CALDAV_CALENDAR_NAME` | Target calendar name         | ✅       |
+
+### Schedule (`config/config.yaml`)
 
 ```yaml
 schedule:
-  active_day: "thursday" # dag van de week
-  start_hour: 11 # start uur
-  end_hour: 24 # eind uur
+  active_day: "wednesday" # Day to check for new rosters
+  start_hour: 10 # Start of active window
+  end_hour: 18 # End of active window
+
+gmail:
+  check_interval_minutes: 10
+  max_emails_to_check: 10
 ```
 
-## Project Structuur
+---
+
+## 🔑 CalDAV Setup
+
+<details>
+<summary><b>📋 Step-by-step iCloud Calendar setup</b></summary>
+
+### 1. Generate an App-Specific Password
+
+1. Go to [appleid.apple.com](https://appleid.apple.com/account/manage)
+2. Navigate to **Sign-In and Security** → **App-Specific Passwords**
+3. Click **Generate an app-specific password**
+4. Name it `Rooster Automation`
+5. Copy the generated password into your `.env`
+
+### 2. Create the "Rooster" Calendar
+
+1. Open the **Calendar** app on your Mac or iPhone
+2. Create a new calendar named **Rooster**
+3. Ensure it syncs with iCloud
+
+> **Note:** If the calendar doesn't exist, events will be uploaded to your default calendar.
+
+</details>
+
+---
+
+## 🏗️ Project Structure
 
 ```
 rooster_automation/
-├── main.py                           # Entry point
+├── main.py                        # Entry point
 ├── app/
-│   ├── main.py                       # Hoofd orchestrator
+│   ├── main.py                    # Orchestrator (RoosterAutomation)
 │   ├── core/
-│   │   ├── settings.py               # Configuratie management
-│   │   └── utils.py                  # Utilities (retry decorator)
+│   │   ├── settings.py            # Pydantic Settings (YAML + env merge)
+│   │   ├── logging_config.py      # Centralized logging
+│   │   └── utils.py               # retry_on_failure decorator
 │   └── services/
-│       ├── calendar_service.py       # CalDAV integratie
-│       ├── gmail_monitor.py          # Gmail IMAP monitoring
-│       └── roi_scraper.py            # Playwright scraper
+│       ├── gmail_monitor.py       # IMAP email monitoring
+│       ├── roi_scraper.py         # Playwright web scraper
+│       └── calendar_service.py    # CalDAV upload + cleanup
 ├── config/
-│   └── config.yaml                   # Configuratie
-├── tests/
-│   ├── test_caldav_connection.py     # CalDAV test
-│   └── test_file_storage_connection.py
-├── scripts/
-│   ├── investigate_site.py           # Site inspector
-│   ├── verify_navigation.py          # Navigation test
-│   └── verify_refactor.py            # Component test
-├── requirements.txt                  # Dependencies
-├── Dockerfile                        # Container setup
-├── docker-compose.yml                # Orchestration
-├── .env                              # Environment vars (niet in git)
-├── .env.example                      # Template
-└── README.md                         # Deze file
+│   └── config.yaml                # Non-secret configuration
+├── tests/                         # Test suite
+├── scripts/                       # Helper & debug scripts
+├── Dockerfile                     # Playwright-based image
+├── docker-compose.yml             # Production deployment
+└── .env.example                   # Environment template
 ```
 
-## Logging
+---
 
-Logs worden opgeslagen in `rooster_automation.log` en getoond in de console.
+## 🐳 Docker Deployment
 
-Log levels:
-
-- **INFO**: Normale operaties
-- **DEBUG**: Gedetailleerde informatie (wijzig in config.yaml)
-- **ERROR**: Fouten en exceptions
-
-## Troubleshooting
-
-### "ROI_EMAIL and ROI_PASSWORD must be set"
-
-- Controleer of `.env` bestand bestaat
-- Controleer of alle waarden zijn ingevuld
-
-### "GMAIL_APP_PASSWORD must be set"
-
-- Genereer een Gmail App Password (zie installatie stap 3)
-- Gebruik het app password, NIET je normale Gmail wachtwoord
-
-### "Failed to search emails"
-
-- Controleer Gmail App Password
-- Controleer internetverbinding
-- Controleer of IMAP is ingeschakeld in Gmail settings
-
-### Playwright browser errors
-
-- Run: `playwright install chromium`
-
-### .ics bestand wordt niet gedownload
-
-- Test handmatig: `python roi_scraper.py --output ./test`
-- Controleer ROI Online credentials
-- Controleer of de website nog steeds dezelfde element IDs gebruikt
-
-### iPhone Shortcuts importeert niet automatisch
-
-- Controleer of de gedeelde map correct is ingesteld
-- Controleer of de Shortcuts automation actief is
-- Test handmatig door een .ics bestand in de map te plaatsen
-
-## Onderhoud
-
-### Element IDs Updaten
-
-Als ROI Online hun website update, moeten mogelijk de element IDs in `config/config.yaml` worden aangepast:
+The Docker image is based on Microsoft's official Playwright image with all Chromium dependencies pre-installed.
 
 ```yaml
-roi_online:
-  month_radio_button_id: "ls_ch_i9gdcl_2"
-  calendar_export_button_id: "ls_ch_ic0g"
-  week_display_id: "ls_ch_i45lDL"
-  prev_week_button_id: "ls_ch_i45lP"
-  next_week_button_id: "ls_ch_i45lN"
-  # etc.
+# docker-compose.yml highlights
+services:
+  rooster-automation:
+    build: .
+    restart: always
+    environment:
+      - TZ=Europe/Amsterdam
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./config:/app/config
+      - ./logs:/app/logs
 ```
 
-Gebruik browser DevTools (F12) om de nieuwe IDs te vinden, of gebruik het helper script:
+```bash
+# Build and run
+docker compose up -d
+
+# View logs
+docker compose logs -f rooster-automation
+
+# Stop
+docker compose down
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+<details>
+<summary><b>Common issues and fixes</b></summary>
+
+| Issue                                    | Solution                                                      |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| `ROI_EMAIL and ROI_PASSWORD must be set` | Check your `.env` file exists and has all values              |
+| `GMAIL_APP_PASSWORD must be set`         | Generate a Gmail App Password, don't use your normal password |
+| `Failed to search emails`                | Ensure IMAP is enabled in Gmail settings                      |
+| Playwright browser errors                | Run `playwright install chromium`                             |
+| `.ics` file not downloading              | Check ROI Online credentials and element IDs in `config.yaml` |
+| Events not appearing                     | Verify CalDAV credentials and calendar name                   |
+
+</details>
+
+---
+
+## 🧰 Maintenance
+
+### Updating Element IDs
+
+If ROI Online updates their portal, you may need to refresh the element IDs:
 
 ```bash
+# Inspect the site to find new element IDs
 python scripts/investigate_site.py
-```
 
-### Week Navigation Testen
-
-Test de week navigation functionaliteit met:
-
-```bash
+# Verify week navigation works
 python scripts/verify_navigation.py
 ```
 
-### Oude Events Opruimen
+Then update the IDs in `config/config.yaml`.
 
-Standaard worden oude events niet automatisch verwijderd. Om events ouder dan X dagen te verwijderen, gebruik je de `delete_old_events` methode van `CalendarService`:
+---
 
-```python
-# In app/main.py na het uploaden van events:
-self.storage.delete_old_events(days_to_keep=90)  # Wijzig naar gewenste aantal dagen
-```
+## 📦 Tech Stack
 
-## Support
+<p align="center">
+  <img src="https://img.shields.io/badge/Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white" alt="Playwright"/>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker"/>
+  <img src="https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=pydantic&logoColor=white" alt="Pydantic"/>
+  <img src="https://img.shields.io/badge/iCloud-999999?style=flat-square&logo=apple&logoColor=white" alt="iCloud"/>
+  <img src="https://img.shields.io/badge/Gmail-EA4335?style=flat-square&logo=gmail&logoColor=white" alt="Gmail"/>
+</p>
 
-Voor vragen of problemen, check de logs in `rooster_automation.log`.
+---
 
+<p align="center">
+  Made with ☕ and automation in mind<br/>
+  <sub>Because life's too short to manually import your roster every week.</sub>
+</p>
